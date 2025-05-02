@@ -5,6 +5,7 @@ import com.intellij.database.datagrid.DataGrid;
 import com.intellij.database.run.ui.CellViewer;
 import com.intellij.database.run.ui.UpdateEvent;
 import com.intellij.openapi.Disposable;
+import com.intellij.openapi.util.Disposer;
 import com.intellij.ui.components.JBPanelWithEmptyText;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -17,6 +18,7 @@ public class LookupCellViewer implements CellViewer, Disposable.Default {
     private final DataGrid dataGrid;
     private final JComponent emptyComponent;
     private final JPanel panel;
+    private Disposable currentDisposable;
 
     public LookupCellViewer(DataGrid dataGrid) {
         this.dataGrid = dataGrid;
@@ -27,8 +29,12 @@ public class LookupCellViewer implements CellViewer, Disposable.Default {
     }
 
     private void updateGrid() {
-        DataGrid grid = LookupGridProvider.createGrid(this, dataGrid);
         panel.removeAll();
+        if (currentDisposable != null) {
+            Disposer.dispose(currentDisposable);
+        }
+        currentDisposable = Disposer.newDisposable(this);
+        DataGrid grid = LookupGridProvider.createGrid(currentDisposable, dataGrid);
         if (grid != null) {
             panel.add(grid.getPanel().getComponent());
         } else {
