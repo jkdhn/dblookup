@@ -1,0 +1,23 @@
+<idea-plugin>
+    <id>me.jkdhn.idea.dblookup</id>
+    <name>Database Lookup Tables</name>
+    <vendor>jkdhn.me</vendor>
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.database</depends>
+    <depends>intellij.grid.plugin</depends>
+    <extensions defaultExtensionNs="com.intellij">
+        <database.datagrid.valueEditorTab implementation="me.jkdhn.idea.dblookup.LookupValueEditorTab"/>
+    </extensions>
+    <actions>
+        <group id="Console.TableResult.EditMaximized.Lookup.Group">
+            <group id="Console.TableResult.EditMaximized.Lookup.Group.Gear" popup="true" icon="AllIcons.General.GearPlain">
+                <reference ref="Console.TableResult.EditMaximized.MoveToRight"/>
+                <reference ref="Console.TableResult.EditMaximized.MoveToBottom"/>
+            </group>
+            <reference ref="Console.TableResult.HideEditMaximized"/>
+        </group>
+        <action class="me.jkdhn.idea.dblookup.LookupValueAction" id="Console.TableResult.LookupValue">
+            <add-to-group group-id="Console.TableResult.FloatingToolbarGroup"/>
+        </action>
+    </actions>
+</idea-plugin>
