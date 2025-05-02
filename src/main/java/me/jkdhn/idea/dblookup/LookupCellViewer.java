@@ -34,9 +34,9 @@ public class LookupCellViewer implements CellViewer, Disposable.Default {
             Disposer.dispose(currentDisposable);
         }
         currentDisposable = Disposer.newDisposable(this);
-        DataGrid grid = LookupGridProvider.createGrid(currentDisposable, dataGrid);
-        if (grid != null) {
-            panel.add(grid.getPanel().getComponent());
+        LookupFileEditor editor = LookupGridProvider.createEditor(currentDisposable, dataGrid);
+        if (editor != null) {
+            panel.add(editor.getComponent());
         } else {
             panel.add(emptyComponent);
         }

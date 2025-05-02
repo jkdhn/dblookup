@@ -1,17 +1,13 @@
 package me.jkdhn.idea.dblookup;
 
 import com.intellij.database.Dbms;
-import com.intellij.database.connection.throwable.info.ErrorInfo;
 import com.intellij.database.datagrid.DataGrid;
-import com.intellij.database.datagrid.DataGridAppearance;
 import com.intellij.database.datagrid.DataGridUtil;
 import com.intellij.database.datagrid.DataGridUtilCore;
 import com.intellij.database.datagrid.DatabaseGridDataHookUp;
 import com.intellij.database.datagrid.DbGridDataHookUpUtil;
 import com.intellij.database.datagrid.GridColumn;
-import com.intellij.database.datagrid.GridDataHookUp;
 import com.intellij.database.datagrid.GridModel;
-import com.intellij.database.datagrid.GridRequestSource;
 import com.intellij.database.datagrid.GridRow;
 import com.intellij.database.datagrid.GridUtil;
 import com.intellij.database.datagrid.ModelIndex;
@@ -26,27 +22,18 @@ import com.intellij.database.model.ObjectKind;
 import com.intellij.database.psi.DbDataSource;
 import com.intellij.database.psi.DbElement;
 import com.intellij.database.run.ui.DataAccessType;
-import com.intellij.database.run.ui.DataGridRequestPlace;
 import com.intellij.database.util.DbImplUtil;
 import com.intellij.database.util.DdlBuilder;
 import com.intellij.database.vfs.DatabaseElementVirtualFileImpl;
 import com.intellij.openapi.Disposable;
-import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.util.Disposer;
-import com.intellij.openapi.util.NlsContexts;
 import com.intellij.openapi.vfs.VirtualFile;
-import com.intellij.ui.JBColor;
 import com.intellij.util.ObjectUtils;
 import com.intellij.util.containers.JBIterable;
-import com.intellij.util.ui.update.Activatable;
-import com.intellij.util.ui.update.UiNotifyConnector;
-import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.Set;
-import java.util.function.BiConsumer;
 
 public class LookupGridProvider {
     public static boolean canCreateGrid(DataGrid sourceGrid) {
@@ -64,7 +51,7 @@ public class LookupGridProvider {
         return false;
     }
 
-    public static @Nullable DataGrid createGrid(Disposable parent, DataGrid sourceGrid) {
+    public static @Nullable LookupFileEditor createEditor(Disposable parent, DataGrid sourceGrid) {
         Project project = sourceGrid.getProject();
         DasTable databaseTable = ObjectUtils.tryCast(DataGridUtil.getDatabaseTable(sourceGrid), DasTable.class);
         GridModel<GridRow, GridColumn> sourceModel = sourceGrid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
@@ -99,26 +86,16 @@ public class LookupGridProvider {
         }
 
         DatabaseGridDataHookUp hookUp = DbGridDataHookUpUtil.createDatabaseTableHookUp(project, parent, sourceHookUp.getSession(), sourceHookUp.getDepartment(), file);
-        DataGrid grid = GridUtil.createDataGrid(hookUp.getProject(), hookUp, ActionGroup.EMPTY_GROUP,
-                ((BiConsumer<DataGrid, DataGridAppearance>) DataGridUtil::configure).andThen(DataGridUtil::configureFullSizeTable).andThen(GridUtil::withFloatingPaging));
-        Disposer.register(parent, grid);
-        if (grid.isFilteringSupported()) {
-            String filter = buildFilter(sourceGrid, sourceGrid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS).getRow(sourceRow), grid, key);
-            if (filter != null) {
-                grid.setFilterText(filter, -1);
-            }
-            grid.getPanel().setSecondTopComponent(grid.getFilterComponent().getComponent());
+        hookUp.setDatabaseTable(refTable);
+
+        LookupFileEditor fileEditor = new LookupFileEditor(project, file, hookUp);
+
+        String filter = buildFilter(sourceGrid, sourceGrid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS).getRow(sourceRow), fileEditor.getDataGrid(), key);
+        if (filter != null) {
+            fileEditor.getDataGrid().setFilterText(filter, -1);
         }
-        grid.getColorsScheme().setDefaultBackground(JBColor.background());
-        grid.getEditorColorsScheme().setDefaultBackground(JBColor.background());
-        grid.addDataGridListener(new LookupGridListener(sourceGrid, key), parent);
-        Disposer.register(parent, UiNotifyConnector.Once.installOn(grid.getPanel().getComponent(), new Activatable() {
-            @Override
-            public void showNotify() {
-                grid.getDataHookup().getLoader().loadFirstPage(new GridRequestSource(new DataGridRequestPlace(grid)));
-            }
-        }));
-        return grid;
+        fileEditor.getDataGrid().addDataGridListener(new LookupGridListener(sourceGrid, key), parent);
+        return fileEditor;
     }
 
     private static DasForeignKey findBestKey(Project project, DasTable table, List<String> selectedColumns) {

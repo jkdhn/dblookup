@@ -21,3 +21,7 @@ dependencies {
         bundledModule("intellij.grid.impl")
     }
 }
+
+intellijPlatform {
+    buildSearchableOptions = false
+}
