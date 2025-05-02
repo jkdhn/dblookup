@@ -1,11 +1,13 @@
 package me.jkdhn.idea.dblookup;
 
 import com.intellij.database.Dbms;
+import com.intellij.database.connection.throwable.info.ErrorInfo;
 import com.intellij.database.datagrid.DataGrid;
 import com.intellij.database.datagrid.DataGridAppearance;
 import com.intellij.database.datagrid.DataGridUtil;
 import com.intellij.database.datagrid.DataGridUtilCore;
-import com.intellij.database.datagrid.DbGridDataHookUpManager;
+import com.intellij.database.datagrid.DatabaseGridDataHookUp;
+import com.intellij.database.datagrid.DbGridDataHookUpUtil;
 import com.intellij.database.datagrid.GridColumn;
 import com.intellij.database.datagrid.GridDataHookUp;
 import com.intellij.database.datagrid.GridModel;
@@ -32,12 +34,14 @@ import com.intellij.openapi.Disposable;
 import com.intellij.openapi.actionSystem.ActionGroup;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.openapi.util.NlsContexts;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.ui.JBColor;
 import com.intellij.util.ObjectUtils;
 import com.intellij.util.containers.JBIterable;
 import com.intellij.util.ui.update.Activatable;
 import com.intellij.util.ui.update.UiNotifyConnector;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
@@ -85,12 +89,16 @@ public class LookupGridProvider {
         }
 
         VirtualFile file = DbImplUtil.findDataVirtualFile((DbElement) refTable, false);
-//        VirtualFile file = DbTargetUtil.getContainingFile((DbElement) refTable, true);
         if (!(file instanceof DatabaseElementVirtualFileImpl)) {
             return null;
         }
 
-        GridDataHookUp<GridRow, GridColumn> hookUp = DbGridDataHookUpManager.getInstance(project).getHookUp(file, parent, null);
+        DatabaseGridDataHookUp sourceHookUp = DataGridUtil.getDatabaseHookUp(sourceGrid);
+        if (sourceHookUp == null) {
+            return null;
+        }
+
+        DatabaseGridDataHookUp hookUp = DbGridDataHookUpUtil.createDatabaseTableHookUp(project, parent, sourceHookUp.getSession(), sourceHookUp.getDepartment(), file);
         DataGrid grid = GridUtil.createDataGrid(hookUp.getProject(), hookUp, ActionGroup.EMPTY_GROUP,
                 ((BiConsumer<DataGrid, DataGridAppearance>) DataGridUtil::configure).andThen(DataGridUtil::configureFullSizeTable).andThen(GridUtil::withFloatingPaging));
         Disposer.register(parent, grid);
