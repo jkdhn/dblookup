@@ -5,6 +5,7 @@ import com.intellij.database.datagrid.DataGrid;
 import com.intellij.database.datagrid.DataGridUtil;
 import com.intellij.database.datagrid.DataGridUtilCore;
 import com.intellij.database.datagrid.DatabaseGridDataHookUp;
+import com.intellij.database.datagrid.DatabaseTableGridDataHookUp;
 import com.intellij.database.datagrid.DbGridDataHookUpUtil;
 import com.intellij.database.datagrid.GridColumn;
 import com.intellij.database.datagrid.GridModel;
@@ -80,12 +81,12 @@ public class LookupGridProvider {
             return null;
         }
 
-        DatabaseGridDataHookUp sourceHookUp = DataGridUtil.getDatabaseHookUp(sourceGrid);
+        DatabaseTableGridDataHookUp sourceHookUp = ObjectUtils.tryCast(DataGridUtil.getDatabaseHookUp(sourceGrid), DatabaseTableGridDataHookUp.class);
         if (sourceHookUp == null) {
             return null;
         }
 
-        DatabaseGridDataHookUp hookUp = DbGridDataHookUpUtil.createDatabaseTableHookUp(project, parent, sourceHookUp.getSession(), sourceHookUp.getDepartment(), file);
+        DatabaseGridDataHookUp hookUp = DbGridDataHookUpUtil.createDatabaseTableHookUp(project, parent, sourceHookUp.getSession(), sourceHookUp.getDepartment(), sourceHookUp.getVirtualFile());
         hookUp.setDatabaseTable(refTable);
 
         LookupFileEditor fileEditor = new LookupFileEditor(project, file, hookUp);
