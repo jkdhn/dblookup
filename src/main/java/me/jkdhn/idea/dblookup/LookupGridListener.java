@@ -9,8 +9,6 @@ import com.intellij.database.datagrid.GridUtil;
 import com.intellij.database.datagrid.ModelIndex;
 import com.intellij.database.datagrid.ModelIndexSet;
 import com.intellij.database.datagrid.SelectionModel;
-import com.intellij.database.model.DasColumn;
-import com.intellij.database.model.DasForeignKey;
 import com.intellij.database.run.ui.DataAccessType;
 import com.intellij.util.containers.JBIterable;
 
@@ -18,11 +16,11 @@ import java.util.List;
 
 public class LookupGridListener implements DataGridListener {
     private final DataGrid sourceGrid;
-    private final DasForeignKey key;
+    private final LookupMapping mapping;
 
-    public LookupGridListener(DataGrid sourceGrid, DasForeignKey key) {
+    public LookupGridListener(DataGrid sourceGrid, LookupMapping mapping) {
         this.sourceGrid = sourceGrid;
-        this.key = key;
+        this.mapping = mapping;
     }
 
     @Override
@@ -34,16 +32,14 @@ public class LookupGridListener implements DataGridListener {
         }
 
         GridModel<GridRow, GridColumn> model = grid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
-        List<ModelIndex<GridColumn>> columns = JBIterable.from(key.getRefColumns().resolveObjects())
-                .filter(DasColumn.class)
-                .map(c -> GridUtil.findColumn(grid, c.getName()))
+        List<ModelIndex<GridColumn>> columns = JBIterable.from(mapping.columns())
+                .map(c -> GridUtil.findColumn(grid, c.target().getName()))
                 .toList();
 
         GridModel<GridRow, GridColumn> sourceModel = sourceGrid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
         ModelIndexSet<GridRow> sourceRows = sourceGrid.getSelectionModel().getSelectedRows();
-        List<ModelIndex<GridColumn>> sourceColumns = JBIterable.from(key.getColumnsRef().resolveObjects())
-                .filter(DasColumn.class)
-                .map(c -> GridUtil.findColumn(sourceGrid, c.getName()))
+        List<ModelIndex<GridColumn>> sourceColumns = JBIterable.from(mapping.columns())
+                .map(c -> GridUtil.findColumn(sourceGrid, c.source().getName()))
                 .toList();
 
         for (int i = 0; i < columns.size() && i < sourceColumns.size(); i++) {

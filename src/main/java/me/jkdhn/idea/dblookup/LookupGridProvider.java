@@ -28,7 +28,6 @@ import com.intellij.database.datagrid.RowSortOrder;
 import com.intellij.database.datagrid.mutating.ColumnQueryData;
 import com.intellij.database.editor.DatabaseTableFileEditor;
 import com.intellij.database.model.DasColumn;
-import com.intellij.database.model.DasForeignKey;
 import com.intellij.database.model.DasObject;
 import com.intellij.database.model.DasTable;
 import com.intellij.database.model.ModelRelationManager;
@@ -57,8 +56,8 @@ import com.intellij.util.containers.JBIterable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Comparator;
 import java.util.List;
-import java.util.Set;
 
 public class LookupGridProvider {
     public static boolean canCreateGrid(DataGrid sourceGrid) {
@@ -71,7 +70,7 @@ public class LookupGridProvider {
                     .map(sourceModel::getColumn)
                     .map(GridColumn::getName)
                     .toList();
-            return findBestKey(project, databaseTable, selectedColumnNames) != null;
+            return findBestMapping(project, databaseTable, selectedColumnNames) != null;
         }
         return false;
     }
@@ -90,19 +89,17 @@ public class LookupGridProvider {
                 .map(GridColumn::getName)
                 .toList();
 
-        DasForeignKey key = findBestKey(project, databaseTable, selectedColumnNames);
-        if (key == null) {
+        LookupMapping mapping = findBestMapping(project, databaseTable, selectedColumnNames);
+        if (mapping == null) {
             return null;
         }
 
-        LookupMapping mapping = LookupMapping.of(key);
-
-        DasTable refTable = key.getRefTable();
-        if (!(refTable instanceof DbElement)) {
+        DasTable targetTable = mapping.target();
+        if (!(targetTable instanceof DbElement)) {
             return null;
         }
 
-        VirtualFile file = DbImplUtil.findDataVirtualFile((DbElement) refTable, false);
+        VirtualFile file = DbImplUtil.findDataVirtualFile((DbElement) targetTable, false);
         if (!(file instanceof DatabaseElementVirtualFileImpl)) {
             return null;
         }
@@ -121,12 +118,12 @@ public class LookupGridProvider {
         }
 
         DatabaseGridDataHookUp hookUp = DbGridDataHookUpUtil.createDatabaseTableHookUp(project, parent, sourceHookUp.getSession(), sourceHookUp.getDepartment(), sourceHookUp.getVirtualFile());
-        hookUp.setDatabaseTable(refTable);
+        hookUp.setDatabaseTable(targetTable);
 
         LookupFileEditor fileEditor = new LookupFileEditor(project, file, hookUp, sourceGrid, mapping);
         Disposer.register(parent, fileEditor);
 
-        String filter = generateFilter(fileEditor.getDataGrid(), buildFilterCondition(sourceGrid, sourceModel.getRow(sourceRow), hookUp.getDataSource(), mapping));
+        String filter = generateFilter(fileEditor.getDataGrid(), buildFilterCondition(sourceGrid, sourceModel.getRow(sourceRow), hookUp.getDataSource(), mapping, primaryColumn));
         if (filter != null) {
             fileEditor.getDataGrid().setFilterText(filter, -1);
         }
@@ -160,31 +157,21 @@ public class LookupGridProvider {
             }, navigateOnce);
         }
 
-        fileEditor.getDataGrid().addDataGridListener(new LookupGridListener(sourceGrid, key), parent);
+        fileEditor.getDataGrid().addDataGridListener(new LookupGridListener(sourceGrid, mapping), parent);
         return fileEditor;
     }
 
-    private static DasForeignKey findBestKey(Project project, DasTable table, List<String> selectedColumns) {
-        DasForeignKey bestKey = null;
-        for (DasForeignKey key : ModelRelationManager.getForeignKeys(project, table)) {
-            Set<String> columns = JBIterable.from(key.getColumnsRef().resolveObjects())
-                    .filter(DasColumn.class)
-                    .map(DasColumn::getName)
-                    .toSet();
-            if (!columns.containsAll(selectedColumns)) {
-                continue;
-            }
-            if (bestKey == null || key.getColumnsRef().size() < bestKey.getColumnsRef().size()) {
-                bestKey = key;
-            }
-        }
-        return bestKey;
+    private static LookupMapping findBestMapping(Project project, DasTable table, List<String> selectedColumns) {
+        return ModelRelationManager.getForeignKeys(project, table).toStream()
+                .map(LookupMapping::of)
+                .filter(m -> m.containsAllColumns(selectedColumns))
+                .min(Comparator.comparingInt(m -> m.columns().size()))
+                .orElse(null);
     }
 
-    private static TriConsumer<DdlBuilder, List<DasColumn>, Dbms> buildFilterCondition(DataGrid sourceGrid, GridRow sourceRow, DbDataSource dataSource, LookupMapping mapping) {
+    private static TriConsumer<DdlBuilder, List<DasColumn>, Dbms> buildFilterCondition(DataGrid sourceGrid, GridRow sourceRow, DbDataSource dataSource, LookupMapping mapping, LookupColumnMapping primaryColumn) {
         List<LookupColumnMapping> filteredColumns = mapping.columns().stream()
-                .filter(c -> !sourceGrid.getSelectionModel().isSelectedColumn(
-                        GridUtil.findColumn(sourceGrid, c.source().getName())))
+                .filter(c -> c != primaryColumn)
                 .toList();
         GridModel<GridRow, GridColumn> sourceModel = sourceGrid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
         GridColumn[] sourceColumns = JBIterable.from(filteredColumns)

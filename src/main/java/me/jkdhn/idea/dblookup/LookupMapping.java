@@ -7,8 +7,10 @@ import com.intellij.database.model.DasTypedObject;
 import com.intellij.util.ObjectUtils;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Iterator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public record LookupMapping(DasTable source, DasTable target, List<LookupColumnMapping> columns) {
     public static LookupMapping of(DasForeignKey key) {
@@ -23,5 +25,13 @@ public record LookupMapping(DasTable source, DasTable target, List<LookupColumnM
             }
         }
         return new LookupMapping(key.getTable(), key.getRefTable(), columns);
+    }
+
+    public boolean containsAllColumns(Collection<String> columnNames) {
+        return columns.stream()
+                .map(LookupColumnMapping::source)
+                .map(DasColumn::getName)
+                .collect(Collectors.toSet())
+                .containsAll(columnNames);
     }
 }
