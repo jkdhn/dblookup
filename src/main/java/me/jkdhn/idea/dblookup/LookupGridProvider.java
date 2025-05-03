@@ -1,10 +1,18 @@
 package me.jkdhn.idea.dblookup;
 
+import com.intellij.database.Dbms;
 import com.intellij.database.connection.throwable.info.ErrorInfo;
+import com.intellij.database.dataSource.DatabaseConnectionCore;
+import com.intellij.database.dataSource.connection.Either;
+import com.intellij.database.dataSource.connection.statements.SmartStatementFactoryService;
+import com.intellij.database.dataSource.connection.statements.StagedException;
+import com.intellij.database.dataSource.connection.statements.StandardExecutionMode;
+import com.intellij.database.dataSource.connection.statements.StandardResultsProcessors;
+import com.intellij.database.dataSource.connection.statements.StatementParameters;
 import com.intellij.database.datagrid.DataGrid;
-import com.intellij.database.datagrid.DataGridListener;
 import com.intellij.database.datagrid.DataGridUtil;
 import com.intellij.database.datagrid.DataGridUtilCore;
+import com.intellij.database.datagrid.DataRequest;
 import com.intellij.database.datagrid.DatabaseGridDataHookUp;
 import com.intellij.database.datagrid.DatabaseTableGridDataHookUp;
 import com.intellij.database.datagrid.DbGridDataHookUpUtil;
@@ -17,18 +25,25 @@ import com.intellij.database.datagrid.GridSortingModel;
 import com.intellij.database.datagrid.GridUtil;
 import com.intellij.database.datagrid.ModelIndex;
 import com.intellij.database.datagrid.RowSortOrder;
-import com.intellij.database.datagrid.SelectionModel;
+import com.intellij.database.datagrid.mutating.ColumnQueryData;
 import com.intellij.database.editor.DatabaseTableFileEditor;
-import com.intellij.database.editor.OpenDataFileDescriptor;
 import com.intellij.database.model.DasColumn;
 import com.intellij.database.model.DasForeignKey;
+import com.intellij.database.model.DasObject;
 import com.intellij.database.model.DasTable;
 import com.intellij.database.model.ModelRelationManager;
+import com.intellij.database.model.ObjectKind;
 import com.intellij.database.psi.DbDataSource;
 import com.intellij.database.psi.DbElement;
 import com.intellij.database.run.ui.DataAccessType;
-import com.intellij.database.run.ui.grid.editors.DbGridCellEditorHelper;
+import com.intellij.database.script.generator.dml.DmlHelper;
+import com.intellij.database.script.generator.dml.DmlTaskKt;
+import com.intellij.database.script.generator.dml.DmlUtilKt;
+import com.intellij.database.script.generator.dml.SelectTask;
+import com.intellij.database.script.generator.dml.WrapInSelectResult;
 import com.intellij.database.util.DbImplUtil;
+import com.intellij.database.util.DdlBuilder;
+import com.intellij.database.util.Version;
 import com.intellij.database.vfs.DatabaseElementVirtualFileImpl;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.application.ApplicationManager;
@@ -37,6 +52,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Disposer;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.ObjectUtils;
+import com.intellij.util.TriConsumer;
 import com.intellij.util.containers.JBIterable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -79,6 +95,8 @@ public class LookupGridProvider {
             return null;
         }
 
+        LookupMapping mapping = LookupMapping.of(key);
+
         DasTable refTable = key.getRefTable();
         if (!(refTable instanceof DbElement)) {
             return null;
@@ -94,19 +112,31 @@ public class LookupGridProvider {
             return null;
         }
 
+        LookupColumnMapping primaryColumn = mapping.columns().stream()
+                .filter(c -> sourceGrid.getSelectionModel().isSelectedColumn(GridUtil.findColumn(sourceGrid, c.source().getName())))
+                .findAny()
+                .orElse(null);
+        if (primaryColumn == null) {
+            return null;
+        }
+
         DatabaseGridDataHookUp hookUp = DbGridDataHookUpUtil.createDatabaseTableHookUp(project, parent, sourceHookUp.getSession(), sourceHookUp.getDepartment(), sourceHookUp.getVirtualFile());
         hookUp.setDatabaseTable(refTable);
 
-        LookupMapping mapping = LookupMapping.of(key);
         LookupFileEditor fileEditor = new LookupFileEditor(project, file, hookUp, sourceGrid, mapping);
+        Disposer.register(parent, fileEditor);
 
-        OpenDataFileDescriptor descriptor = buildDescriptor(sourceGrid, sourceGrid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS).getRow(sourceRow), fileEditor.getDataGrid(), mapping, file);
-        if (descriptor != null) {
-            String sorting = DatabaseTableFileEditor.generateSortingText(fileEditor.getDataGrid(), RowSortOrder.Type.ASC, JBIterable.from(mapping.columns()).map(c -> c.target().getName()));
-            GridSortingModel<GridRow, GridColumn> sortingModel = fileEditor.getDataGrid().getDataHookup().getSortingModel();
-            Document document = sortingModel == null ? null : sortingModel.getDocument();
-            if (document != null) {
-                ApplicationManager.getApplication().runWriteAction(() -> document.setText(sorting));
+        String filter = generateFilter(fileEditor.getDataGrid(), buildFilterCondition(sourceGrid, sourceModel.getRow(sourceRow), hookUp.getDataSource(), mapping));
+        if (filter != null) {
+            fileEditor.getDataGrid().setFilterText(filter, -1);
+        }
+
+        GridSortingModel<GridRow, GridColumn> sortingModel = hookUp.getSortingModel();
+        if (sortingModel != null) {
+            Document sortingDocument = sortingModel.getDocument();
+            if (sortingDocument != null) {
+                String text = DatabaseTableFileEditor.generateSortingText(fileEditor.getDataGrid(), RowSortOrder.Type.ASC, JBIterable.of(primaryColumn.target().getName()));
+                ApplicationManager.getApplication().runWriteAction(() -> sortingDocument.setText(text));
             }
 
             Disposable navigateOnce = Disposer.newDisposable(parent);
@@ -121,47 +151,17 @@ public class LookupGridProvider {
 
                 @Override
                 public void requestFinished(@NotNull GridRequestSource source, boolean success) {
-                    descriptor.navigateTo(fileEditor.getDataGrid());
                     Disposer.dispose(navigateOnce);
+                    GridModel<GridRow, GridColumn> model = fileEditor.getDataGrid().getDataModel(DataAccessType.DATABASE_DATA);
+                    GridColumn gridColumn = model.getColumn(GridUtil.findColumn(fileEditor.getDataGrid(), primaryColumn.target().getName()));
+                    Object value = sourceModel.getValueAt(sourceRow, GridUtil.findColumn(sourceGrid, primaryColumn.source().getName()));
+                    navigateToRow(fileEditor.getDataGrid(), primaryColumn.target(), gridColumn, value, filter, hookUp);
                 }
             }, navigateOnce);
-
-            Disposable fixOnce = Disposer.newDisposable(parent);
-            fileEditor.getDataGrid().addDataGridListener(new DataGridListener() {
-                @Override
-                public void onSelectionChanged(DataGrid dataGrid) {
-                    SelectionModel<GridRow, GridColumn> selectionModel = dataGrid.getSelectionModel();
-                    if (selectionModel.getSelectedRowCount() == 1 && selectionModel.getSelectedColumnCount() == 0) {
-                        Disposer.dispose(fixOnce);
-                        fixSelection(sourceGrid, dataGrid, mapping, hookUp);
-                    }
-                }
-            }, fixOnce);
         }
 
         fileEditor.getDataGrid().addDataGridListener(new LookupGridListener(sourceGrid, key), parent);
         return fileEditor;
-    }
-
-    private static void fixSelection(DataGrid sourceGrid, DataGrid grid, LookupMapping mapping, DatabaseGridDataHookUp hookUp) {
-        GridModel<GridRow, GridColumn> sourceModel = sourceGrid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
-        ModelIndex<GridRow> sourceRow = sourceGrid.getSelectionModel().getLeadSelectionRow();
-
-        GridModel<GridRow, GridColumn> model = grid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
-        ModelIndex<GridRow> row = grid.getSelectionModel().getLeadSelectionRow();
-
-        // check if OpenDataFileDescriptor selected the correct row
-        for (LookupColumnMapping column : mapping.columns()) {
-            Object sourceValue = sourceModel.getValueAt(sourceRow, GridUtil.findColumn(sourceGrid, column.source().getName()));
-            Object value = model.getValueAt(row, GridUtil.findColumn(grid, column.target().getName()));
-            if (!DbGridCellEditorHelper.areValuesEqual(sourceValue, value, hookUp)) {
-                return;
-            }
-        }
-
-        // correct row was selected, select the whole row
-        grid.getSelectionModel().setSelection(row, ModelIndex.forColumn(grid, 1));
-        grid.getSelectionModel().selectWholeRow();
     }
 
     private static DasForeignKey findBestKey(Project project, DasTable table, List<String> selectedColumns) {
@@ -181,22 +181,104 @@ public class LookupGridProvider {
         return bestKey;
     }
 
-    private static OpenDataFileDescriptor buildDescriptor(DataGrid sourceGrid, GridRow sourceRow, DataGrid grid, LookupMapping mapping, VirtualFile file) {
-        DbDataSource dataSource = DataGridUtilCore.getDatabaseSystem(grid);
-        if (dataSource == null) {
-            return null;
-        }
+    private static TriConsumer<DdlBuilder, List<DasColumn>, Dbms> buildFilterCondition(DataGrid sourceGrid, GridRow sourceRow, DbDataSource dataSource, LookupMapping mapping) {
+        List<LookupColumnMapping> filteredColumns = mapping.columns().stream()
+                .filter(c -> !sourceGrid.getSelectionModel().isSelectedColumn(
+                        GridUtil.findColumn(sourceGrid, c.source().getName())))
+                .toList();
         GridModel<GridRow, GridColumn> sourceModel = sourceGrid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
-        GridColumn[] sourceColumns = JBIterable.from(mapping.columns())
+        GridColumn[] sourceColumns = JBIterable.from(filteredColumns)
                 .map(c -> GridUtil.findColumn(sourceGrid, c.source().getName()))
                 .map(sourceModel::getColumn)
                 .toArray(new GridColumn[0]);
         Object[] sourceValues = JBIterable.of(sourceColumns)
                 .map(c -> c.getValue(sourceRow))
                 .toArray(new Object[0]);
-        String[] targetColumns = JBIterable.from(mapping.columns())
+        String[] targetColumns = JBIterable.from(filteredColumns)
                 .map(c -> c.target().getName())
                 .toArray(new String[0]);
-        return new OpenDataFileDescriptor(grid.getProject(), file, targetColumns, null, List.of(new Object[][]{sourceValues}), null);
+        List<String[]> formattedValues = DataGridUtil.formatValues(sourceGrid, sourceColumns, List.of(new Object[][]{sourceValues}));
+        return DbImplUtil.defaultWhereCondition(targetColumns, formattedValues, dataSource.getVersion());
+    }
+
+    private static String generateFilter(DataGrid grid, TriConsumer<DdlBuilder, List<DasColumn>, Dbms> filter) {
+        DasObject table = DataGridUtilCore.getDatabaseTable(grid);
+        if (table == null) {
+            return null;
+        }
+        Dbms dbms = DataGridUtil.getDbms(grid);
+        DdlBuilder where = DbImplUtil.createBuilderForUIExec(dbms, table);
+        filter.accept(where, table.getDasChildren(ObjectKind.COLUMN).filter(DasColumn.class).toList(), dbms);
+        if (!where.isEmpty()) {
+            return where.getStatement();
+        } else {
+            return null;
+        }
+    }
+
+    private static void navigateToRow(DataGrid grid, DasColumn primaryColumn, GridColumn primaryGridColumn, Object primaryValue, String filter, DataRequest.OwnerEx owner) {
+        Project project = grid.getProject();
+
+        DasObject table = DataGridUtilCore.getDatabaseTable(grid);
+        if (table == null) {
+            return;
+        }
+
+        Dbms dbms = DataGridUtil.getDbms(grid);
+        DbDataSource dataSource = DataGridUtilCore.getDatabaseSystem(grid);
+        Version version = DbImplUtil.getDatabaseVersion(dataSource);
+        DmlHelper dmlHelper = DmlUtilKt.dmlGenerator(dbms);
+
+        SelectTask task = DmlTaskKt.allColumns(table)
+                .version(version)
+                .build(DbImplUtil.createBuilderForUIExec(dbms, table));
+
+        DdlBuilder builder = dmlHelper.generate(task).getBuilder();
+        builder.space()
+                .keyword("WHERE").space()
+                .symbol("(")
+                .columnRef(primaryColumn).space()
+                .symbol("<").space();
+
+        int offset = builder.length();
+        builder.placeholder();
+
+        if (!primaryColumn.isNotNull()) {
+            builder.space().keyword("OR").space().columnRef(primaryColumn).space().keywords("IS", "NULL").symbol(")");
+        } else {
+            builder.symbol(")");
+        }
+
+        if (filter != null) {
+            builder.space().keyword("AND").space().symbol("(").plain(filter).symbol(")");
+        }
+
+        WrapInSelectResult wrapResult = dmlHelper.generate(DmlTaskKt.wrapInSelect(builder.getStatement(), project)
+                .countAll()
+                .version(version)
+                .build(DbImplUtil.createBuilderForUIExec(dbms, table)));
+        String statement = wrapResult.getStatement();
+        if (wrapResult.getOffset() == null) {
+            return;
+        }
+
+        owner.getMessageBus().getDataProducer().processRequest(new DataRequest.RawRequest(owner) {
+            @Override
+            public void processRaw(Context context, DatabaseConnectionCore databaseConnectionCore) throws Exception {
+                ModelIndex<GridColumn> primaryIndex = GridUtil.findColumn(grid, primaryColumn.getName());
+                Either<StagedException, Integer> result = SmartStatementFactoryService.getInstance().poweredBy(databaseConnectionCore)
+                        .parameterized()
+                        .execute(new StatementParameters()
+                                        .placeholdersOffsets(new int[]{offset + wrapResult.getOffset()})
+                                        .parameters(List.of(new ColumnQueryData(primaryGridColumn, primaryValue)))
+                                        .asData(statement),
+                                StandardExecutionMode.QUERY,
+                                StandardResultsProcessors.SUM);
+                if (result.getLeft() != null) {
+                    throw result.getLeft();
+                }
+                grid.showCell(result.rightOr(0), primaryIndex);
+            }
+        });
     }
 }
