@@ -31,7 +31,6 @@ public class LookupValueAction extends DumbAwareAction {
             return;
         }
 
-        e.getPresentation().setText("Lookup Value");
         e.getPresentation().setEnabledAndVisible(LookupGridProvider.canCreateGrid(grid));
     }
 

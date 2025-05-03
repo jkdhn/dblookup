@@ -17,6 +17,6 @@ public class LookupValueEditorTab implements ValueEditorTab {
 
     @Override
     public @NotNull TabInfoProvider createTabInfoProvider(@NotNull DataGrid dataGrid, @NotNull Function0<Unit> function0) {
-        return new LookupTabInfoProvider(dataGrid, "Lookup", (ActionGroup) ActionManager.getInstance().getAction("Console.TableResult.EditMaximized.Lookup.Group"));
+        return new LookupTabInfoProvider(dataGrid, LookupBundle.message("EditMaximized.Lookup.text"), (ActionGroup) ActionManager.getInstance().getAction("Console.TableResult.EditMaximized.Lookup.Group"));
     }
 }

@@ -17,8 +17,9 @@
             </group>
             <reference ref="Console.TableResult.HideEditMaximized"/>
         </group>
-        <action class="me.jkdhn.idea.dblookup.LookupValueAction" id="Console.TableResult.LookupValue">
+        <action class="me.jkdhn.idea.dblookup.LookupValueAction" id="Console.TableResult.LookupValue" icon="AllIcons.Actions.Show">
             <add-to-group group-id="Console.TableResult.FloatingToolbarGroup"/>
         </action>
     </actions>
+    <resource-bundle>messages.LookupBundle</resource-bundle>
 </idea-plugin>

@@ -6,7 +6,6 @@ import com.intellij.database.run.ui.CellViewer;
 import com.intellij.database.run.ui.UpdateEvent;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.util.Disposer;
-import com.intellij.ui.SimpleColoredText;
 import com.intellij.ui.components.JBPanelWithEmptyText;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -40,10 +39,11 @@ public class LookupCellViewer implements CellViewer, Disposable.Default {
         LookupFileEditor editor = LookupGridProvider.createEditor(currentDisposable, dataGrid);
         if (editor != null) {
             panel.add(editor.getComponent());
-            tabInfoProvider.getTabInfo().setText("Lookup: " + editor.getMapping().target().getName());
+            String name = editor.getMapping().target().getName();
+            tabInfoProvider.getTabInfo().setText(LookupBundle.message("EditMaximized.Lookup.text.long", name));
         } else {
             panel.add(emptyComponent);
-            tabInfoProvider.getTabInfo().setText("Lookup");
+            tabInfoProvider.getTabInfo().setText(LookupBundle.message("EditMaximized.Lookup.text"));
         }
         panel.updateUI();
     }
