@@ -6,7 +6,7 @@ import com.intellij.database.datagrid.DataGridAppearance;
 import com.intellij.database.datagrid.DataGridUtil;
 import com.intellij.database.datagrid.DatabaseGridDataHookUp;
 import com.intellij.database.editor.TableFileEditor;
-import com.intellij.database.model.DasForeignKey;
+import com.intellij.database.settings.DatabaseSettings;
 import com.intellij.openapi.actionSystem.DataSink;
 import com.intellij.openapi.actionSystem.PlatformCoreDataKeys;
 import com.intellij.openapi.project.Project;
@@ -27,6 +27,7 @@ public class LookupFileEditor extends TableFileEditor {
         this.grid.getColorsScheme().setDefaultBackground(JBColor.background());
         this.grid.getEditorColorsScheme().setDefaultBackground(JBColor.background());
         DataGridUtil.addGridHeaderComponent(this.grid);
+        DataGridUtil.setupProgressIndicatingAuditor(this.grid);
     }
 
     @Override
@@ -46,6 +47,7 @@ public class LookupFileEditor extends TableFileEditor {
     protected void configure(@NotNull DataGrid grid, @NotNull DataGridAppearance appearance) {
         DataGridUtil.configure(grid, appearance);
         DataGridUtil.withFloatingPaging(grid, appearance);
+        grid.putUserData(DatabaseDataKeys.DATA_GRID_SETTINGS_KEY, new LookupGridSettings(DatabaseSettings.getSettings()));
     }
 
     @Override
