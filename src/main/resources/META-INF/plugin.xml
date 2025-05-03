@@ -1,7 +1,10 @@
 <idea-plugin>
     <id>me.jkdhn.idea.dblookup</id>
-    <name>Database Lookup Tables</name>
-    <vendor>jkdhn.me</vendor>
+    <name>Database Lookup Tools</name>
+    <vendor>Jack Dähn</vendor>
+    <description>
+        Adds a Lookup panel which allows looking up and choosing foreign key targets.
+    </description>
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.database</depends>
     <depends>intellij.grid.plugin</depends>
