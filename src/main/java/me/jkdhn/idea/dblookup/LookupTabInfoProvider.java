@@ -20,7 +20,7 @@ public class LookupTabInfoProvider extends TabInfoProvider {
     }
 
     private @NotNull CellViewer createViewer() {
-        return new LookupCellViewer(dataGrid);
+        return new LookupCellViewer(this, dataGrid);
     }
 
     @Override

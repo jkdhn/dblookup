@@ -8,6 +8,7 @@ import com.intellij.database.datagrid.GridRow;
 import com.intellij.database.datagrid.GridUtil;
 import com.intellij.database.datagrid.ModelIndex;
 import com.intellij.database.datagrid.ModelIndexSet;
+import com.intellij.database.datagrid.SelectionModel;
 import com.intellij.database.model.DasColumn;
 import com.intellij.database.model.DasForeignKey;
 import com.intellij.database.run.ui.DataAccessType;
@@ -26,7 +27,11 @@ public class LookupGridListener implements DataGridListener {
 
     @Override
     public void onSelectionChanged(DataGrid grid) {
-        ModelIndex<GridRow> row = grid.getSelectionModel().getLeadSelectionRow();
+        SelectionModel<GridRow, GridColumn> selectionModel = grid.getSelectionModel();
+        ModelIndex<GridRow> row = selectionModel.getLeadSelectionRow();
+        if (selectionModel.getSelectedColumnCount() == 0) {
+            return;
+        }
 
         GridModel<GridRow, GridColumn> model = grid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
         List<ModelIndex<GridColumn>> columns = JBIterable.from(key.getRefColumns().resolveObjects())

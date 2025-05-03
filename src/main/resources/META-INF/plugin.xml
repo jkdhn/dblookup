@@ -10,7 +10,8 @@
     </extensions>
     <actions>
         <group id="Console.TableResult.EditMaximized.Lookup.Group">
-            <group id="Console.TableResult.EditMaximized.Lookup.Group.Gear" popup="true" icon="AllIcons.General.GearPlain">
+            <group id="Console.TableResult.EditMaximized.Lookup.Group.Gear" popup="true"
+                   icon="AllIcons.General.GearPlain">
                 <reference ref="Console.TableResult.EditMaximized.MoveToRight"/>
                 <reference ref="Console.TableResult.EditMaximized.MoveToBottom"/>
             </group>

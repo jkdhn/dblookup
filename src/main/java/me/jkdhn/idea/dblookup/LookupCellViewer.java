@@ -6,6 +6,7 @@ import com.intellij.database.run.ui.CellViewer;
 import com.intellij.database.run.ui.UpdateEvent;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.ui.SimpleColoredText;
 import com.intellij.ui.components.JBPanelWithEmptyText;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -15,12 +16,14 @@ import javax.swing.JPanel;
 import java.awt.BorderLayout;
 
 public class LookupCellViewer implements CellViewer, Disposable.Default {
+    private final LookupTabInfoProvider tabInfoProvider;
     private final DataGrid dataGrid;
     private final JComponent emptyComponent;
     private final JPanel panel;
     private Disposable currentDisposable;
 
-    public LookupCellViewer(DataGrid dataGrid) {
+    public LookupCellViewer(LookupTabInfoProvider tabInfoProvider, DataGrid dataGrid) {
+        this.tabInfoProvider = tabInfoProvider;
         this.dataGrid = dataGrid;
         this.panel = new JPanel(new BorderLayout());
         this.emptyComponent = new JBPanelWithEmptyText().withEmptyText(DataGridBundle.message("no.cell.selected"));
@@ -37,8 +40,10 @@ public class LookupCellViewer implements CellViewer, Disposable.Default {
         LookupFileEditor editor = LookupGridProvider.createEditor(currentDisposable, dataGrid);
         if (editor != null) {
             panel.add(editor.getComponent());
+            tabInfoProvider.getTabInfo().setText("Lookup: " + editor.getMapping().target().getName());
         } else {
             panel.add(emptyComponent);
+            tabInfoProvider.getTabInfo().setText("Lookup");
         }
         panel.updateUI();
     }
