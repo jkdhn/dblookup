@@ -14,10 +14,10 @@ import com.intellij.database.datagrid.DataGridUtil;
 import com.intellij.database.datagrid.DataGridUtilCore;
 import com.intellij.database.datagrid.DataRequest;
 import com.intellij.database.datagrid.DatabaseGridDataHookUp;
-import com.intellij.database.datagrid.DatabaseTableGridDataHookUp;
 import com.intellij.database.datagrid.DbGridDataHookUpUtil;
 import com.intellij.database.datagrid.GridColumn;
 import com.intellij.database.datagrid.GridDataHookUp;
+import com.intellij.database.datagrid.GridHelper;
 import com.intellij.database.datagrid.GridModel;
 import com.intellij.database.datagrid.GridRequestSource;
 import com.intellij.database.datagrid.GridRow;
@@ -104,7 +104,7 @@ public class LookupGridProvider {
             return null;
         }
 
-        DatabaseTableGridDataHookUp sourceHookUp = ObjectUtils.tryCast(DataGridUtil.getDatabaseHookUp(sourceGrid), DatabaseTableGridDataHookUp.class);
+        DatabaseGridDataHookUp sourceHookUp = ObjectUtils.tryCast(DataGridUtil.getDatabaseHookUp(sourceGrid), DatabaseGridDataHookUp.class);
         if (sourceHookUp == null) {
             return null;
         }
@@ -117,11 +117,13 @@ public class LookupGridProvider {
             return null;
         }
 
-        DatabaseGridDataHookUp hookUp = DbGridDataHookUpUtil.createDatabaseTableHookUp(project, parent, sourceHookUp.getSession(), sourceHookUp.getDepartment(), sourceHookUp.getVirtualFile());
+        DatabaseGridDataHookUp hookUp = DbGridDataHookUpUtil.createDatabaseTableHookUp(project, parent, sourceHookUp.getSession(), sourceHookUp.getDepartment(), file);
         hookUp.setDatabaseTable(targetTable);
 
         LookupFileEditor fileEditor = new LookupFileEditor(project, file, hookUp, sourceGrid, mapping);
         Disposer.register(parent, fileEditor);
+
+        fileEditor.getDataGrid().putUserData(GridHelper.GRID_HELPER_KEY, new LookupGridHelper(GridHelper.get(fileEditor.getDataGrid())));
 
         String filter = generateFilter(fileEditor.getDataGrid(), buildFilterCondition(sourceGrid, sourceModel.getRow(sourceRow), hookUp.getDataSource(), mapping, primaryColumn));
         if (filter != null) {
