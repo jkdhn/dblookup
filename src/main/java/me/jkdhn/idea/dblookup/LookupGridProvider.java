@@ -60,6 +60,7 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Stream;
 
 public class LookupGridProvider {
     public static boolean canCreateGrid(DataGrid sourceGrid) {
@@ -72,7 +73,7 @@ public class LookupGridProvider {
                     .map(sourceModel::getColumn)
                     .map(GridColumn::getName)
                     .toList();
-            return findBestMapping(project, databaseTable, selectedColumnNames) != null;
+            return hasAnyMapping(project, databaseTable, selectedColumnNames);
         }
         return false;
     }
@@ -174,12 +175,20 @@ public class LookupGridProvider {
         return fileEditor;
     }
 
-    private static LookupMapping findBestMapping(Project project, DasTable table, List<String> selectedColumns) {
+    private static Stream<LookupMapping> findMappings(Project project, DasTable table, List<String> selectedColumns) {
         return ModelRelationManager.getForeignKeys(project, table).toStream()
                 .map(LookupMapping::of)
-                .filter(m -> m.containsAllColumns(selectedColumns))
+                .filter(m -> m.containsAllColumns(selectedColumns));
+    }
+
+    private static LookupMapping findBestMapping(Project project, DasTable table, List<String> selectedColumns) {
+        return findMappings(project, table, selectedColumns)
                 .min(Comparator.comparingInt(m -> m.columns().size()))
                 .orElse(null);
+    }
+
+    private static boolean hasAnyMapping(Project project, DasTable table, List<String> selectedColumns) {
+        return findMappings(project, table, selectedColumns).findAny().isPresent();
     }
 
     private static TriConsumer<DdlBuilder, List<DasColumn>, Dbms> buildFilterCondition(DataGrid sourceGrid, GridRow sourceRow, DbDataSource dataSource, LookupMapping mapping, LookupColumnMapping primaryColumn) {
