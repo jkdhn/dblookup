@@ -10,6 +10,7 @@ import com.intellij.database.dataSource.connection.statements.StandardExecutionM
 import com.intellij.database.dataSource.connection.statements.StandardResultsProcessors;
 import com.intellij.database.dataSource.connection.statements.StatementParameters;
 import com.intellij.database.datagrid.DataGrid;
+import com.intellij.database.datagrid.DataGridListener;
 import com.intellij.database.datagrid.DataGridUtil;
 import com.intellij.database.datagrid.DataGridUtilCore;
 import com.intellij.database.datagrid.DataRequest;
@@ -35,6 +36,7 @@ import com.intellij.database.model.ObjectKind;
 import com.intellij.database.psi.DbDataSource;
 import com.intellij.database.psi.DbElement;
 import com.intellij.database.run.ui.DataAccessType;
+import com.intellij.database.run.ui.grid.editors.DbGridCellEditorHelper;
 import com.intellij.database.script.generator.dml.DmlHelper;
 import com.intellij.database.script.generator.dml.DmlTaskKt;
 import com.intellij.database.script.generator.dml.DmlUtilKt;
@@ -157,6 +159,15 @@ public class LookupGridProvider {
                     navigateToRow(fileEditor.getDataGrid(), primaryColumn.target(), gridColumn, value, filter, hookUp);
                 }
             }, navigateOnce);
+
+            Disposable fixOnce = Disposer.newDisposable(parent);
+            fileEditor.getDataGrid().addDataGridListener(new DataGridListener() {
+                @Override
+                public void onSelectionChanged(DataGrid dataGrid) {
+                    Disposer.dispose(fixOnce);
+                    fixSelection(sourceGrid, dataGrid, mapping, hookUp);
+                }
+            }, fixOnce);
         }
 
         fileEditor.getDataGrid().addDataGridListener(new LookupGridListener(sourceGrid, mapping), parent);
@@ -254,7 +265,6 @@ public class LookupGridProvider {
         owner.getMessageBus().getDataProducer().processRequest(new DataRequest.RawRequest(owner) {
             @Override
             public void processRaw(Context context, DatabaseConnectionCore databaseConnectionCore) throws Exception {
-                ModelIndex<GridColumn> primaryIndex = GridUtil.findColumn(grid, primaryColumn.getName());
                 Either<StagedException, Integer> result = SmartStatementFactoryService.getInstance().poweredBy(databaseConnectionCore)
                         .parameterized()
                         .execute(new StatementParameters()
@@ -266,8 +276,29 @@ public class LookupGridProvider {
                 if (result.getLeft() != null) {
                     throw result.getLeft();
                 }
-                grid.showCell(result.rightOr(0), primaryIndex);
+                grid.getResultView().showFirstCell(result.rightOr(-1) + 1);
             }
         });
+    }
+
+    private static void fixSelection(DataGrid sourceGrid, DataGrid grid, LookupMapping mapping, DatabaseGridDataHookUp hookUp) {
+        GridModel<GridRow, GridColumn> sourceModel = sourceGrid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
+        ModelIndex<GridRow> sourceRow = sourceGrid.getSelectionModel().getLeadSelectionRow();
+
+        GridModel<GridRow, GridColumn> model = grid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
+        ModelIndex<GridRow> row = grid.getSelectionModel().getLeadSelectionRow();
+
+        // check if we selected the correct row
+        for (LookupColumnMapping column : mapping.columns()) {
+            Object sourceValue = sourceModel.getValueAt(sourceRow, GridUtil.findColumn(sourceGrid, column.source().getName()));
+            Object value = model.getValueAt(row, GridUtil.findColumn(grid, column.target().getName()));
+            if (!DbGridCellEditorHelper.areValuesEqual(sourceValue, value, hookUp)) {
+                return;
+            }
+        }
+
+        // correct row was selected, select the whole row
+        grid.getSelectionModel().setSelection(row, ModelIndex.forColumn(grid, 1));
+        grid.getSelectionModel().selectWholeRow();
     }
 }
