@@ -27,7 +27,7 @@ public class LookupGridListener implements DataGridListener {
     public void onSelectionChanged(DataGrid grid) {
         SelectionModel<GridRow, GridColumn> selectionModel = grid.getSelectionModel();
         ModelIndex<GridRow> row = selectionModel.getLeadSelectionRow();
-        if (selectionModel.getSelectedColumnCount() == 0) {
+        if (selectionModel.getSelectedRowCount() != 1 || selectionModel.getSelectedColumnCount() == 0) {
             return;
         }
 

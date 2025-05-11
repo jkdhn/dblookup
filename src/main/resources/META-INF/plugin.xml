@@ -5,6 +5,15 @@
     <description>
         Adds a Lookup panel which allows looking up and choosing foreign key targets.
     </description>
+    <change-notes>
+        <![CDATA[
+        <h2>Improvements</h2>
+        <ul>
+            <li>Only reload the lookup table if a different foreign key is followed</li>
+            <li>Select row in the lookup table without running any queries if already on the right page</li>
+        </ul>
+        ]]>
+    </change-notes>
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.database</depends>
     <depends>intellij.grid.plugin</depends>
@@ -20,7 +29,8 @@
             </group>
             <reference ref="Console.TableResult.HideEditMaximized"/>
         </group>
-        <action class="me.jkdhn.idea.dblookup.LookupValueAction" id="Console.TableResult.LookupValue" icon="AllIcons.Actions.Show">
+        <action class="me.jkdhn.idea.dblookup.LookupValueAction" id="Console.TableResult.LookupValue"
+                icon="AllIcons.Actions.Show">
             <add-to-group group-id="Console.TableResult.FloatingToolbarGroup"/>
         </action>
     </actions>

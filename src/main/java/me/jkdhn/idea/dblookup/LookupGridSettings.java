@@ -16,6 +16,15 @@ public class LookupGridSettings implements DataGridSettings {
     }
 
     @Override
+    public boolean isDisableGridFloatingToolbar() {
+        return true;
+    }
+
+    @Override
+    public void setDisableGridFloatingToolbar(boolean disableGridFloatingToolbar) {
+    }
+
+    @Override
     public void setEnablePagingInInEditorResultsByDefault(boolean enablePagingInInEditorResultsByDefault) {
         settings.setEnablePagingInInEditorResultsByDefault(enablePagingInInEditorResultsByDefault);
     }
@@ -63,15 +72,6 @@ public class LookupGridSettings implements DataGridSettings {
     @Override
     public boolean isEnableLocalFilterByDefault() {
         return settings.isEnableLocalFilterByDefault();
-    }
-
-    @Override
-    public boolean isDisableGridFloatingToolbar() {
-        return true;
-    }
-
-    @Override
-    public void setDisableGridFloatingToolbar(boolean disableGridFloatingToolbar) {
     }
 
     @Override
