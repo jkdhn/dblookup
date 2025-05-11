@@ -7,11 +7,6 @@
     </description>
     <change-notes>
         <![CDATA[
-        <h2>Improvements</h2>
-        <ul>
-            <li>Only reload the lookup table if a different foreign key is followed</li>
-            <li>Select row in the lookup table without running any queries if already on the right page</li>
-        </ul>
         ]]>
     </change-notes>
     <depends>com.intellij.modules.platform</depends>
