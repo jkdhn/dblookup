@@ -7,6 +7,10 @@
     </description>
     <change-notes>
         <![CDATA[
+        <h2>Improvements</h2>
+        <ul>
+            <li>Update to 2025.2</li>
+        </ul>
         ]]>
     </change-notes>
     <depends>com.intellij.modules.platform</depends>

@@ -21,6 +21,7 @@ import com.intellij.database.psi.DbElement;
 import com.intellij.database.run.ui.DataAccessType;
 import com.intellij.database.util.DbImplUtil;
 import com.intellij.database.util.DdlBuilder;
+import com.intellij.database.util.GridTablesModel;
 import com.intellij.database.vfs.DatabaseElementVirtualFileImpl;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.project.Project;
@@ -103,7 +104,7 @@ public class LookupGridUtil {
         DasTable targetTable = info.targetTable();
 
         DatabaseGridDataHookUp hookUp = DbGridDataHookUpUtil.createDatabaseTableHookUp(project, parent, sourceHookUp.getSession(), sourceHookUp.getDepartment(), file);
-        hookUp.setDatabaseTable(targetTable);
+        hookUp.setGridTablesModel(new GridTablesModel(targetTable));
 
         LookupFileEditor fileEditor = new LookupFileEditor(project, file, hookUp, info);
         Disposer.register(parent, fileEditor);
