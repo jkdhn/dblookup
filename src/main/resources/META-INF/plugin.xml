@@ -11,6 +11,10 @@
         <ul>
             <li>Update to 2026.1</li>
         </ul>
+        <h2>Fixes</h2>
+        <ul>
+            <li>Fix error when a result table is missing a column which is part of a composite foreign key</li>
+        </ul>
         ]]>
     </change-notes>
     <depends>com.intellij.modules.platform</depends>

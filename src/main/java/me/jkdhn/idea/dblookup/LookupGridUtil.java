@@ -130,6 +130,7 @@ public class LookupGridUtil {
     public static TriConsumer<DdlBuilder, List<DasColumn>, Dbms> buildFilterCondition(DataGrid sourceGrid, GridRow sourceRow, DbDataSource dataSource, LookupMapping mapping, LookupColumnMapping primaryColumn) {
         List<LookupColumnMapping> filteredColumns = mapping.columns().stream()
                 .filter(c -> !Objects.equals(c, primaryColumn))
+                .filter(c -> GridUtil.findColumn(sourceGrid, c.source().getName()).isValid(sourceGrid))
                 .toList();
         GridModel<GridRow, GridColumn> sourceModel = sourceGrid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
         GridColumn[] sourceColumns = JBIterable.from(filteredColumns)
