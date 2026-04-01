@@ -112,7 +112,7 @@ public class LookupFileEditor extends TableFileEditor {
         DataGridUtil.configure(grid, appearance);
         DataGridUtil.withFloatingPaging(grid, appearance);
         grid.putUserData(DatabaseDataKeys.DATA_GRID_SETTINGS_KEY, new LookupGridSettings(DatabaseSettings.getSettings()));
-        grid.putUserData(GridHelper.GRID_HELPER_KEY, new LookupGridHelper(GridHelper.get(grid)));
+        grid.putUserData(GridHelper.getGRID_HELPER_KEY(), new LookupGridHelper(GridHelper.get(grid)));
     }
 
     @Override

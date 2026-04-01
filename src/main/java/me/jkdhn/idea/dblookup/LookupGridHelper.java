@@ -7,6 +7,7 @@ import com.intellij.database.datagrid.DataGrid;
 import com.intellij.database.datagrid.GridColumn;
 import com.intellij.database.datagrid.GridColumnLayout;
 import com.intellij.database.datagrid.GridHelper;
+import com.intellij.database.datagrid.GridHelperPropertyProvider;
 import com.intellij.database.datagrid.GridModel;
 import com.intellij.database.datagrid.GridRow;
 import com.intellij.database.datagrid.ModelIndex;
@@ -32,6 +33,7 @@ import com.intellij.psi.PsiElement;
 import com.intellij.util.containers.JBIterable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
+import org.jspecify.annotations.NonNull;
 
 import javax.swing.Icon;
 import java.util.List;
@@ -61,11 +63,6 @@ public class LookupGridHelper implements GridHelper {
     @Override
     public boolean canEditTogether(@NotNull CoreGrid<GridRow, GridColumn> grid, @NotNull List<GridColumn> columns) {
         return helper.canEditTogether(grid, columns);
-    }
-
-    @Override
-    public boolean canSortTogether(@NotNull CoreGrid<GridRow, GridColumn> grid, @NotNull List<ModelIndex<GridColumn>> oldOrdering, List<ModelIndex<GridColumn>> newColumns) {
-        return helper.canSortTogether(grid, oldOrdering, newColumns);
     }
 
     @Override
@@ -139,23 +136,8 @@ public class LookupGridHelper implements GridHelper {
     }
 
     @Override
-    public int getDefaultPageSize() {
-        return helper.getDefaultPageSize();
-    }
-
-    @Override
-    public void setDefaultPageSize(int value) {
-        helper.setDefaultPageSize(value);
-    }
-
-    @Override
-    public boolean isLimitDefaultPageSize() {
-        return helper.isLimitDefaultPageSize();
-    }
-
-    @Override
-    public void setLimitDefaultPageSize(boolean value) {
-        helper.setLimitDefaultPageSize(value);
+    public @NonNull GridHelperPropertyProvider getProperties() {
+        return helper.getProperties();
     }
 
     @Override
