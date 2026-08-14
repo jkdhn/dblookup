@@ -4,7 +4,7 @@ plugins {
 }
 
 group = "me.jkdhn.idea"
-version = "1.0.7-SNAPSHOT"
+version = "1.0.7"
 
 repositories {
     mavenCentral()
