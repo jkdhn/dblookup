@@ -4,6 +4,7 @@ import com.intellij.database.connection.throwable.info.ErrorInfo;
 import com.intellij.database.data.types.DataTypeConversion;
 import com.intellij.database.datagrid.CoreGrid;
 import com.intellij.database.datagrid.DataGrid;
+import com.intellij.database.datagrid.GridCellRequest;
 import com.intellij.database.datagrid.GridColumn;
 import com.intellij.database.datagrid.GridColumnLayout;
 import com.intellij.database.datagrid.GridHelper;
@@ -211,8 +212,8 @@ public class LookupGridHelper implements GridHelper {
     }
 
     @Override
-    public @Nullable Language getCellLanguage(@NotNull CoreGrid<GridRow, GridColumn> grid, @NotNull ModelIndex<GridRow> row, @NotNull ModelIndex<GridColumn> column) {
-        return helper.getCellLanguage(grid, row, column);
+    public @Nullable Language getCellLanguage(@NotNull GridCellRequest<GridRow, GridColumn> gridCellRequest) {
+        return helper.getCellLanguage(gridCellRequest);
     }
 
     @Override
@@ -221,8 +222,8 @@ public class LookupGridHelper implements GridHelper {
     }
 
     @Override
-    public @Nullable PsiCodeFragment createCellCodeFragment(@NotNull String text, @NotNull Project project, @NotNull CoreGrid<GridRow, GridColumn> grid, @NotNull ModelIndex<GridRow> row, @NotNull ModelIndex<GridColumn> column) {
-        return helper.createCellCodeFragment(text, project, grid, row, column);
+    public @Nullable PsiCodeFragment createCellCodeFragment(@NotNull String s, @NotNull Project project, @NotNull GridCellRequest<GridRow, GridColumn> gridCellRequest) {
+        return helper.createCellCodeFragment(s, project, gridCellRequest);
     }
 
     @Override
