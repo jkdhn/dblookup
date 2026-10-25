@@ -1,6 +1,6 @@
 plugins {
     id("java")
-    id("org.jetbrains.intellij.platform") version "2.18.1"
+    id("org.jetbrains.intellij.platform") version "2.19.0"
 }
 
 group = "me.jkdhn.idea"
@@ -15,7 +15,7 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        intellijIdea("2026.2")
+        intellijIdea("263.7307.44")
         bundledPlugin("com.intellij.database")
         bundledPlugin("intellij.grid.plugin")
         bundledModule("intellij.grid.impl")

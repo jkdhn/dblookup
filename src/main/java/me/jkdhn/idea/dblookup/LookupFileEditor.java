@@ -13,10 +13,10 @@ import com.intellij.database.dataSource.connection.statements.StatementParameter
 import com.intellij.database.datagrid.DataGrid;
 import com.intellij.database.datagrid.DataGridAppearance;
 import com.intellij.database.datagrid.DataGridListener;
-import com.intellij.database.datagrid.DataGridUtil;
 import com.intellij.database.datagrid.DataGridUtilCore;
 import com.intellij.database.datagrid.DataRequest;
 import com.intellij.database.datagrid.DatabaseGridDataHookUp;
+import com.intellij.database.datagrid.DbGridCellEditorUtil;
 import com.intellij.database.datagrid.GridColumn;
 import com.intellij.database.datagrid.GridDataHookUp;
 import com.intellij.database.datagrid.GridHelper;
@@ -29,14 +29,15 @@ import com.intellij.database.datagrid.ModelIndex;
 import com.intellij.database.datagrid.ModelIndexSet;
 import com.intellij.database.datagrid.RowSortOrder;
 import com.intellij.database.datagrid.mutating.ColumnQueryData;
-import com.intellij.database.editor.DatabaseTableFileEditor;
 import com.intellij.database.editor.TableFileEditor;
+import com.intellij.database.grid.impl.DataGridUtil;
+import com.intellij.database.grid.impl.fileEditor.DatabaseTableGridEditor;
 import com.intellij.database.model.DasColumn;
 import com.intellij.database.model.DasObject;
 import com.intellij.database.psi.DbDataSource;
 import com.intellij.database.run.ui.DataAccessType;
 import com.intellij.database.run.ui.DataGridRequestPlace;
-import com.intellij.database.run.ui.grid.editors.DbGridCellEditorHelper;
+import com.intellij.database.run.ui.grid.editors.GridCellEditorHelper;
 import com.intellij.database.script.generator.dml.DmlHelper;
 import com.intellij.database.script.generator.dml.DmlTaskKt;
 import com.intellij.database.script.generator.dml.DmlUtilKt;
@@ -141,7 +142,7 @@ public class LookupFileEditor extends TableFileEditor {
         if (sortingModel != null) {
             Document sortingDocument = sortingModel.getDocument();
             if (sortingDocument != null) {
-                String text = DatabaseTableFileEditor.generateSortingText(grid, RowSortOrder.Type.ASC, JBIterable.of(primaryColumn.target().getName()));
+                String text = DatabaseTableGridEditor.generateSortingText(grid, RowSortOrder.Type.ASC, JBIterable.of(primaryColumn.target().getName()));
                 String oldText = WriteAction.compute(() -> {
                     String old = sortingDocument.getText();
                     sortingDocument.setText(text);
@@ -157,7 +158,7 @@ public class LookupFileEditor extends TableFileEditor {
         Object sourceValue = sourceModel.getValueAt(sourceRow, sourceColumn);
         for (ModelIndex<GridRow> row : info.sourceGrid().getSelectionModel().getSelectedRows().asIterable()) {
             Object value = sourceModel.getValueAt(row, sourceColumn);
-            if (!DbGridCellEditorHelper.areValuesEqual(sourceValue, value, hookUp)) {
+            if (!GridCellEditorHelper.areValuesEqual(sourceValue, value, DataGridUtilCore.numberEqualsInner(DbGridCellEditorUtil.getDbms(hookUp, grid)))) {
                 // multiple different values are selected in the source grid, don't select anything
                 grid.getSelectionModel().setSelection(ModelIndexSet.forRows(grid), ModelIndexSet.forColumns(grid));
                 return;
@@ -361,7 +362,7 @@ public class LookupFileEditor extends TableFileEditor {
         for (LookupColumnMapping column : mapping.columns()) {
             Object sourceValue = sourceModel.getValueAt(sourceRow, GridUtil.findColumn(sourceGrid, column.source().getName()));
             Object value = model.getValueAt(row, GridUtil.findColumn(grid, column.target().getName()));
-            if (!DbGridCellEditorHelper.areValuesEqual(sourceValue, value, hookUp)) {
+            if (!GridCellEditorHelper.areValuesEqual(sourceValue, value, DataGridUtilCore.numberEqualsInner(DbGridCellEditorUtil.getDbms(hookUp, grid)))) {
                 return false;
             }
         }

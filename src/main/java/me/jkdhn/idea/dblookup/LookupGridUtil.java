@@ -2,7 +2,6 @@ package me.jkdhn.idea.dblookup;
 
 import com.intellij.database.Dbms;
 import com.intellij.database.datagrid.DataGrid;
-import com.intellij.database.datagrid.DataGridUtil;
 import com.intellij.database.datagrid.DataGridUtilCore;
 import com.intellij.database.datagrid.DatabaseGridDataHookUp;
 import com.intellij.database.datagrid.DbGridDataHookUpUtil;
@@ -12,6 +11,7 @@ import com.intellij.database.datagrid.GridRow;
 import com.intellij.database.datagrid.GridTablesModelBuilder;
 import com.intellij.database.datagrid.GridUtil;
 import com.intellij.database.datagrid.ModelIndex;
+import com.intellij.database.grid.impl.DataGridUtil;
 import com.intellij.database.model.DasColumn;
 import com.intellij.database.model.DasObject;
 import com.intellij.database.model.DasTable;
