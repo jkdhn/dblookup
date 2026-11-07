@@ -1,5 +1,6 @@
 package me.jkdhn.idea.dblookup;
 
+import com.intellij.database.DatabaseDataKeys;
 import com.intellij.database.actions.ShowEditMaximizedAction;
 import com.intellij.database.datagrid.DataGrid;
 import com.intellij.database.datagrid.GridUtil;
@@ -15,18 +16,13 @@ import javax.swing.JComponent;
 public class LookupValueAction extends DumbAwareAction {
     @Override
     public @NotNull ActionUpdateThread getActionUpdateThread() {
-        return ActionUpdateThread.EDT;
+        return ActionUpdateThread.BGT;
     }
 
     @Override
     public void update(@NotNull AnActionEvent e) {
-        DataGrid grid = GridUtil.getDataGrid(e.getDataContext());
+        DataGrid grid = e.getData(DatabaseDataKeys.DATA_GRID_KEY);
         if (grid == null) {
-            e.getPresentation().setEnabledAndVisible(false);
-            return;
-        }
-
-        if (!DataGridUIUtil.inCell(grid, e)) {
             e.getPresentation().setEnabledAndVisible(false);
             return;
         }

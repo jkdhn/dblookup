@@ -7,6 +7,10 @@
     </description>
     <change-notes>
         <![CDATA[
+        <h2>Fixes</h2>
+        <ul>
+            <li>Move action updates back to the background thread</li>
+        </ul>
         ]]>
     </change-notes>
     <depends>com.intellij.modules.platform</depends>
