@@ -33,42 +33,38 @@ import com.intellij.util.containers.JBIterable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Stream;
 
 public class LookupGridUtil {
-    public static boolean canCreateGrid(DataGrid sourceGrid) {
-        Project project = sourceGrid.getProject();
-        DasTable databaseTable = ObjectUtils.tryCast(DataGridUtil.getDatabaseTable(sourceGrid), DasTable.class);
+    public static boolean canCreateGrid(DataGrid sourceGrid, LookupTableInfo info) {
         GridModel<GridRow, GridColumn> sourceModel = sourceGrid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
         ModelIndex<GridRow> sourceRow = sourceGrid.getSelectionModel().getLeadSelectionRow();
-        if (sourceRow.isValid(sourceModel)) {
-            List<String> selectedColumnNames = sourceGrid.getSelectionModel().getSelectedColumns().asIterable()
-                    .map(sourceModel::getColumn)
-                    .map(GridColumn::getName)
-                    .toList();
-            return hasAnyMapping(project, databaseTable, selectedColumnNames);
+        if (!sourceRow.isValid(sourceModel)) {
+            return false;
         }
-        return false;
+        List<String> selectedColumnNames = getSelectedColumnNames(sourceGrid, sourceModel);
+        return info.mappings().stream().anyMatch(m -> m.containsAllColumns(selectedColumnNames));
     }
 
-    public static @Nullable LookupGridInfo resolveInfo(DataGrid sourceGrid) {
-        Project project = sourceGrid.getProject();
-        DasTable databaseTable = ObjectUtils.tryCast(DataGridUtil.getDatabaseTable(sourceGrid), DasTable.class);
+    public static LookupTableInfo resolveTableInfo(Project project, DataGrid sourceGrid) {
+        DasTable table = DataGridUtil.getDatabaseTable(sourceGrid);
+        List<LookupMapping> mappings = ModelRelationManager.getForeignKeys(project, table).toStream()
+                .map(LookupMapping::of)
+                .toList();
+        return new LookupTableInfo(mappings);
+    }
+
+    public static @Nullable LookupGridInfo resolveGridInfo(DataGrid sourceGrid, LookupTableInfo info) {
         GridModel<GridRow, GridColumn> sourceModel = sourceGrid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
         ModelIndex<GridRow> sourceRow = sourceGrid.getSelectionModel().getLeadSelectionRow();
         if (!sourceRow.isValid(sourceModel)) {
             return null;
         }
 
-        List<String> selectedColumnNames = sourceGrid.getSelectionModel().getSelectedColumns().asIterable()
-                .map(sourceModel::getColumn)
-                .map(GridColumn::getName)
-                .toList();
-
-        LookupMapping mapping = findBestMapping(project, databaseTable, selectedColumnNames);
+        LookupMapping mapping = findBestMapping(info, getSelectedColumnNames(sourceGrid, sourceModel));
         if (mapping == null) {
             return null;
         }
@@ -96,6 +92,14 @@ public class LookupGridUtil {
                 targetTable);
     }
 
+    public static @NotNull List<String> getSelectedColumnNames(DataGrid sourceGrid, GridModel<GridRow, GridColumn> sourceModel) {
+        return sourceGrid.getSelectionModel().getSelectedColumns().asIterable()
+                .map(sourceModel::getColumn)
+                .filterNotNull()
+                .map(GridColumn::getName)
+                .toList();
+    }
+
     public static @NotNull LookupFileEditor createEditor(Disposable parent, LookupGridInfo info) {
         DataGrid sourceGrid = info.sourceGrid();
         Project project = sourceGrid.getProject();
@@ -111,20 +115,11 @@ public class LookupGridUtil {
         return fileEditor;
     }
 
-    private static Stream<LookupMapping> findMappings(Project project, DasTable table, List<String> selectedColumns) {
-        return ModelRelationManager.getForeignKeys(project, table).toStream()
-                .map(LookupMapping::of)
-                .filter(m -> m.containsAllColumns(selectedColumns));
-    }
-
-    private static LookupMapping findBestMapping(Project project, DasTable table, List<String> selectedColumns) {
-        return findMappings(project, table, selectedColumns)
+    private static LookupMapping findBestMapping(LookupTableInfo info, Collection<String> selectedColumns) {
+        return info.mappings().stream()
+                .filter(m -> m.containsAllColumns(selectedColumns))
                 .min(Comparator.comparingInt(m -> m.columns().size()))
                 .orElse(null);
-    }
-
-    private static boolean hasAnyMapping(Project project, DasTable table, List<String> selectedColumns) {
-        return findMappings(project, table, selectedColumns).findAny().isPresent();
     }
 
     public static TriConsumer<DdlBuilder, List<DasColumn>, Dbms> buildFilterCondition(DataGrid sourceGrid, GridRow sourceRow, DbDataSource dataSource, LookupMapping mapping, LookupColumnMapping primaryColumn) {

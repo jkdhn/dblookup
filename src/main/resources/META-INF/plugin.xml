@@ -7,6 +7,10 @@
     </description>
     <change-notes>
         <![CDATA[
+        <h2>Improvements</h2>
+        <ul>
+            <li>Cache resolved mappings of the grid</li>
+        </ul>
         <h2>Fixes</h2>
         <ul>
             <li>Move action updates back to the background thread</li>

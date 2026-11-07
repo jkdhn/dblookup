@@ -7,6 +7,7 @@ import com.intellij.database.run.ui.CellViewer;
 import com.intellij.database.run.ui.UpdateEvent;
 import com.intellij.openapi.Disposable;
 import com.intellij.openapi.util.Disposer;
+import com.intellij.psi.util.CachedValuesManager;
 import com.intellij.ui.components.JBPanelWithEmptyText;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -35,11 +36,12 @@ public class LookupCellViewer implements CellViewer, Disposable.Default {
     }
 
     private GridSettings resolveSettings(DataGrid dataGrid) {
-        LookupGridInfo info = LookupGridUtil.resolveInfo(dataGrid);
+        LookupTableInfo tableInfo = CachedValuesManager.getManager(dataGrid.getProject()).getCachedValue(dataGrid, new LookupTableInfoProvider(dataGrid.getProject(), dataGrid));
+
+        LookupGridInfo info = LookupGridUtil.resolveGridInfo(dataGrid, tableInfo);
         if (info == null) {
             return null;
         }
-
 
         LookupColumnMapping primaryColumn = info.mapping().columns().stream()
                 .filter(c -> info.sourceGrid().getSelectionModel().isSelectedColumn(GridUtil.findColumn(info.sourceGrid(), c.source().getName())))
