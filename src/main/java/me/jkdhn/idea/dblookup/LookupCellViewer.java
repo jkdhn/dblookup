@@ -1,6 +1,5 @@
 package me.jkdhn.idea.dblookup;
 
-import com.intellij.database.DataGridBundle;
 import com.intellij.database.datagrid.DataGrid;
 import com.intellij.database.datagrid.GridUtil;
 import com.intellij.database.run.ui.CellViewer;
@@ -30,7 +29,7 @@ public class LookupCellViewer implements CellViewer, Disposable.Default {
         this.tabInfoProvider = tabInfoProvider;
         this.dataGrid = dataGrid;
         this.panel = new JPanel(new BorderLayout());
-        this.emptyComponent = new JBPanelWithEmptyText().withEmptyText(DataGridBundle.message("no.cell.selected"));
+        this.emptyComponent = new JBPanelWithEmptyText().withEmptyText(LookupBundle.message("no.cell.with.foreign.key.selected"));
         this.panel.add(emptyComponent);
         updateGrid();
     }
