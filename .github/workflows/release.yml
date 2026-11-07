@@ -1,0 +1,93 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release (defaults to the current version without -SNAPSHOT)
+        required: false
+        type: string
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free disk space for plugin verification
+        uses: jlumbroso/free-disk-space@v2.0.0
+        with:
+          large-packages: false
+
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 25
+
+      - uses: gradle/actions/setup-gradle@v6
+
+      - name: Determine release version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          current=$(sed -n 's/^version = "\(.*\)"$/\1/p' build.gradle.kts)
+          echo "release=${INPUT_VERSION:-${current%-SNAPSHOT}}" >>"$GITHUB_OUTPUT"
+
+      - name: Determine next version
+        id: next
+        uses: WyriHaximus/github-action-next-semvers@v1
+        with:
+          version: ${{ steps.version.outputs.release }}
+
+      - name: Set release version and patch changelog
+        env:
+          RELEASE: ${{ steps.version.outputs.release }}
+        run: |
+          sed -i "s/^version = \".*\"$/version = \"$RELEASE\"/" build.gradle.kts
+          ./gradlew patchChangelog
+          ./gradlew getChangelog --project-version="$RELEASE" --no-header --no-summary --output-file="$RUNNER_TEMP/release-notes.md"
+
+      - name: Build and verify plugin
+        run: ./gradlew buildPlugin verifyPlugin
+
+      - name: Commit, tag and push release
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: Release ${{ steps.version.outputs.release }}
+          tag_name: v${{ steps.version.outputs.release }}
+          branch: main
+
+      - name: Publish to JetBrains Marketplace
+        env:
+          PUBLISH_TOKEN: ${{ secrets.PUBLISH_TOKEN }}
+        run: ./gradlew publishPlugin
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ steps.version.outputs.release }}
+          name: ${{ steps.version.outputs.release }}
+          body_path: ${{ runner.temp }}/release-notes.md
+          files: build/distributions/*-${{ steps.version.outputs.release }}.zip
+          fail_on_unmatched_files: true
+
+      - name: Set next snapshot version
+        env:
+          NEXT: ${{ steps.next.outputs.patch }}-SNAPSHOT
+        run: sed -i "s/^version = \".*\"$/version = \"$NEXT\"/" build.gradle.kts
+
+      - name: Commit and push next snapshot version
+        uses: stefanzweifel/git-auto-commit-action@v7
+        with:
+          commit_message: Bump to ${{ steps.next.outputs.patch }}-SNAPSHOT
+          branch: main

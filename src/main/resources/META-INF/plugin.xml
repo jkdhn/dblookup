@@ -5,19 +5,6 @@
     <description>
         Adds a Lookup panel which allows looking up and choosing foreign key targets.
     </description>
-    <change-notes>
-        <![CDATA[
-        <h2>Improvements</h2>
-        <ul>
-            <li>Improve handling when rows with different values are selected</li>
-            <li>Cache resolved mappings of the grid</li>
-        </ul>
-        <h2>Fixes</h2>
-        <ul>
-            <li>Move action updates back to the background thread</li>
-        </ul>
-        ]]>
-    </change-notes>
     <depends>com.intellij.modules.platform</depends>
     <depends>com.intellij.database</depends>
     <depends>intellij.grid.plugin</depends>
