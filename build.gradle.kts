@@ -15,7 +15,7 @@ repositories {
 
 dependencies {
     intellijPlatform {
-        intellijIdea("263.7307.44")
+        intellijIdea("2026.3")
         bundledPlugin("com.intellij.database")
         bundledPlugin("intellij.grid.plugin")
         bundledModule("intellij.grid.impl")
