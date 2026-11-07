@@ -61,8 +61,10 @@ import com.intellij.ui.JBColor;
 import com.intellij.util.containers.JBIterable;
 import org.jetbrains.annotations.NotNull;
 
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class LookupFileEditor extends TableFileEditor {
     private final DatabaseGridDataHookUp hookUp;
@@ -133,67 +135,90 @@ public class LookupFileEditor extends TableFileEditor {
         GridModel<GridRow, GridColumn> sourceModel = info.sourceGrid().getDataModel(DataAccessType.DATA_WITH_MUTATIONS);
         ModelIndex<GridRow> sourceRow = info.sourceGrid().getSelectionModel().getLeadSelectionRow();
 
-        String filter = LookupGridUtil.generateFilter(grid, LookupGridUtil.buildFilterCondition(info.sourceGrid(), sourceModel.getRow(sourceRow), hookUp.getDataSource(), info.mapping(), primaryColumn));
-        String oldFilter = grid.getFilterText();
-        grid.setFilterText(filter, -1);
-        boolean needReload = !Objects.equals(oldFilter, filter);
-
-        GridSortingModel<GridRow, GridColumn> sortingModel = hookUp.getSortingModel();
-        if (sortingModel != null) {
-            Document sortingDocument = sortingModel.getDocument();
-            if (sortingDocument != null) {
-                String text = DatabaseTableGridEditor.generateSortingText(grid, RowSortOrder.Type.ASC, JBIterable.of(primaryColumn.target().getName()));
-                String oldText = WriteAction.compute(() -> {
-                    String old = sortingDocument.getText();
-                    sortingDocument.setText(text);
-                    return old;
-                });
-                if (!Objects.equals(oldText, text)) {
-                    needReload = true;
+        boolean autoSelect = true;
+        Set<LookupColumnMapping> unfilteredColumns = new LinkedHashSet<>();
+        unfilteredColumns.add(primaryColumn); // never filter by primary column
+        for (LookupColumnMapping column : info.mapping().columns()) {
+            ModelIndex<GridColumn> sourceColumn = GridUtil.findColumn(info.sourceGrid(), column.source().getName());
+            Object sourceValue = sourceModel.getValueAt(sourceRow, sourceColumn);
+            for (ModelIndex<GridRow> row : info.sourceGrid().getSelectionModel().getSelectedRows().asIterable()) {
+                Object value = sourceModel.getValueAt(row, sourceColumn);
+                if (!GridCellEditorHelper.areValuesEqual(sourceValue, value, DataGridUtilCore.numberEqualsInner(DbGridCellEditorUtil.getDbms(hookUp, grid)))) {
+                    // column contains differing values, don't filter by it (sort by it instead)
+                    unfilteredColumns.add(column);
+                    // only allow auto selecting if all selected rows are equal (in relevant columns)
+                    autoSelect = false;
+                    break;
                 }
             }
         }
 
-        ModelIndex<GridColumn> sourceColumn = GridUtil.findColumn(info.sourceGrid(), primaryColumn.source().getName());
-        Object sourceValue = sourceModel.getValueAt(sourceRow, sourceColumn);
-        for (ModelIndex<GridRow> row : info.sourceGrid().getSelectionModel().getSelectedRows().asIterable()) {
-            Object value = sourceModel.getValueAt(row, sourceColumn);
-            if (!GridCellEditorHelper.areValuesEqual(sourceValue, value, DataGridUtilCore.numberEqualsInner(DbGridCellEditorUtil.getDbms(hookUp, grid)))) {
-                // multiple different values are selected in the source grid, don't select anything
-                grid.getSelectionModel().setSelection(ModelIndexSet.forRows(grid), ModelIndexSet.forColumns(grid));
-                return;
-            }
-        }
+        boolean filterChanged = applyFilterText(LookupGridUtil.generateFilter(grid, LookupGridUtil.buildFilterCondition(info.sourceGrid(), sourceModel.getRow(sourceRow), hookUp.getDataSource(), info.mapping(), unfilteredColumns)));
+        boolean sortingChanged = applySortingText(DatabaseTableGridEditor.generateSortingText(grid, RowSortOrder.Type.ASC, JBIterable.from(unfilteredColumns).map(c -> c.target().getName())));
+        boolean needReload = filterChanged || sortingChanged;
+
+        ModelIndex<GridColumn> primarySourceColumn = GridUtil.findColumn(info.sourceGrid(), primaryColumn.source().getName());
+        Object primarySourceValue = sourceModel.getValueAt(sourceRow, primarySourceColumn);
 
         if (loaded && needReload) {
-            // clear the selection
-            grid.getSelectionModel().setSelection(ModelIndexSet.forRows(grid), ModelIndexSet.forColumns(grid));
-
-            // delay selecting until first page is loaded
-            Disposable disposable = Disposer.newDisposable(currentDisposable);
+            clearSelection();
             GridRequestSource requestSource = new GridRequestSource(new DataGridRequestPlace(grid));
-            hookUp.addRequestListener(new GridDataHookUp.RequestListener<>() {
-                @Override
-                public void error(@NotNull GridRequestSource source, @NotNull ErrorInfo errorInfo) {
-                }
-
-                @Override
-                public void updateCountReceived(@NotNull GridRequestSource source, int updateCount) {
-                }
-
-                @Override
-                public void requestFinished(@NotNull GridRequestSource source, boolean success) {
-                    if (source == requestSource) {
-                        Disposer.dispose(disposable);
-                        selectValue(primaryColumn.target(), sourceValue, hookUp, currentDisposable);
+            if (autoSelect) {
+                // delay selecting until first page is loaded
+                Disposable disposable = Disposer.newDisposable(currentDisposable);
+                hookUp.addRequestListener(new GridDataHookUp.RequestListener<>() {
+                    @Override
+                    public void error(@NotNull GridRequestSource source, @NotNull ErrorInfo errorInfo) {
                     }
-                }
-            }, disposable);
-            hookUp.getLoader().loadFirstPage(requestSource);
-            return;
-        }
 
-        selectValue(primaryColumn.target(), sourceValue, hookUp, currentDisposable);
+                    @Override
+                    public void updateCountReceived(@NotNull GridRequestSource source, int updateCount) {
+                    }
+
+                    @Override
+                    public void requestFinished(@NotNull GridRequestSource source, boolean success) {
+                        if (source == requestSource) {
+                            Disposer.dispose(disposable);
+                            selectValue(primaryColumn.target(), primarySourceValue, hookUp, currentDisposable);
+                        }
+                    }
+                }, disposable);
+            }
+            hookUp.getLoader().loadFirstPage(requestSource);
+        } else {
+            if (autoSelect) {
+                selectValue(primaryColumn.target(), primarySourceValue, hookUp, currentDisposable);
+            } else {
+                clearSelection();
+            }
+        }
+    }
+
+    private void clearSelection() {
+        grid.getSelectionModel().setSelection(ModelIndexSet.forRows(grid), ModelIndexSet.forColumns(grid));
+    }
+
+    private boolean applyFilterText(String filterText) {
+        String oldFilter = grid.getFilterText();
+        grid.setFilterText(filterText, -1);
+        return !Objects.equals(oldFilter, filterText);
+    }
+
+    private boolean applySortingText(String sortingText) {
+        GridSortingModel<GridRow, GridColumn> sortingModel = hookUp.getSortingModel();
+        if (sortingModel == null) {
+            return false;
+        }
+        Document sortingDocument = sortingModel.getDocument();
+        if (sortingDocument == null) {
+            return false;
+        }
+        String oldText = WriteAction.compute(() -> {
+            String old = sortingDocument.getText();
+            sortingDocument.setText(sortingText);
+            return old;
+        });
+        return !Objects.equals(oldText, sortingText);
     }
 
     private void selectValue(DasColumn column, Object value, DatabaseGridDataHookUp hookUp, CheckedDisposable disposable) {
@@ -212,7 +237,7 @@ public class LookupFileEditor extends TableFileEditor {
 
         if (hookUp.getSortingModel() == null || hookUp.getFilteringModel() == null) {
             // the code below only works if the grid is sorted and filtered, abort
-            grid.getSelectionModel().setSelection(ModelIndexSet.forRows(grid), ModelIndexSet.forColumns(grid));
+            clearSelection();
             return;
         }
 
@@ -229,8 +254,7 @@ public class LookupFileEditor extends TableFileEditor {
             }
         }, fixOnce);
 
-        // clear the selection
-        grid.getSelectionModel().setSelection(ModelIndexSet.forRows(grid), ModelIndexSet.forColumns(grid));
+        clearSelection();
 
         // select the correct row by querying its row number from the database
         navigateToValue(column, value, disposable);

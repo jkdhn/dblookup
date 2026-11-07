@@ -37,6 +37,7 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 public class LookupGridUtil {
     public static boolean canCreateGrid(DataGrid sourceGrid, LookupTableInfo info) {
@@ -122,9 +123,9 @@ public class LookupGridUtil {
                 .orElse(null);
     }
 
-    public static TriConsumer<DdlBuilder, List<DasColumn>, Dbms> buildFilterCondition(DataGrid sourceGrid, GridRow sourceRow, DbDataSource dataSource, LookupMapping mapping, LookupColumnMapping primaryColumn) {
+    public static TriConsumer<DdlBuilder, List<DasColumn>, Dbms> buildFilterCondition(DataGrid sourceGrid, GridRow sourceRow, DbDataSource dataSource, LookupMapping mapping, Set<LookupColumnMapping> excludedColumns) {
         List<LookupColumnMapping> filteredColumns = mapping.columns().stream()
-                .filter(c -> !Objects.equals(c, primaryColumn))
+                .filter(c -> !excludedColumns.contains(c))
                 .filter(c -> GridUtil.findColumn(sourceGrid, c.source().getName()).isValid(sourceGrid))
                 .toList();
         GridModel<GridRow, GridColumn> sourceModel = sourceGrid.getDataModel(DataAccessType.DATA_WITH_MUTATIONS);

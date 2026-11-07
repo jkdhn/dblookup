@@ -9,6 +9,7 @@
         <![CDATA[
         <h2>Improvements</h2>
         <ul>
+            <li>Improve handling when rows with different values are selected</li>
             <li>Cache resolved mappings of the grid</li>
         </ul>
         <h2>Fixes</h2>
