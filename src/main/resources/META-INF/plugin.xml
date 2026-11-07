@@ -1,6 +1,6 @@
 <idea-plugin>
     <id>me.jkdhn.idea.dblookup</id>
-    <name>Database Lookup Tools</name>
+    <name>Database Foreign Key Lookup</name>
     <vendor>Jack Dähn</vendor>
     <description>
         Adds a Lookup panel which allows looking up and choosing foreign key targets.
