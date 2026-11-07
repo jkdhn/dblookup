@@ -4,6 +4,12 @@
 
 ### Improvements
 
+### Fixes
+
+## [1.1.0] - 2026-11-07
+
+### Improvements
+
 - Improve handling when rows with different values are selected
 - Cache resolved mappings of the grid
 - Improve message when no valid cell is selected
@@ -74,7 +80,8 @@
 
 Initial release
 
-[Unreleased]: https://github.com/jkdhn/dblookup/compare/v1.0.8...HEAD
+[Unreleased]: https://github.com/jkdhn/dblookup/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/jkdhn/dblookup/compare/v1.0.8...v1.1.0
 [1.0.8]: https://github.com/jkdhn/dblookup/compare/v1.0.7...v1.0.8
 [1.0.7]: https://github.com/jkdhn/dblookup/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/jkdhn/dblookup/compare/v1.0.5...v1.0.6
