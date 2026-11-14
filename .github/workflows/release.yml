@@ -25,16 +25,16 @@ jobs:
           large-packages: false
           docker-images: false
 
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: main
 
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: 25
 
-      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
 
       - name: Determine release version
         id: version
@@ -46,7 +46,7 @@ jobs:
 
       - name: Determine next version
         id: next
-        uses: WyriHaximus/github-action-next-semvers@d079934efaf011a4cf8912d4637097fe35d32b93 # v1
+        uses: WyriHaximus/github-action-next-semvers@18aa9ed4152808ab99b88d71f5481e41f8d89930 # v1.2.1
         with:
           version: ${{ steps.version.outputs.release }}
 
@@ -62,7 +62,7 @@ jobs:
         run: ./gradlew buildPlugin verifyPlugin
 
       - name: Commit, tag and push release
-        uses: stefanzweifel/git-auto-commit-action@d0b01107b5db882071f96de5dd4b54961ea93f4c # v7
+        uses: stefanzweifel/git-auto-commit-action@d0b01107b5db882071f96de5dd4b54961ea93f4c # v7.2.1
         with:
           commit_message: Release ${{ steps.version.outputs.release }}
           tag_name: v${{ steps.version.outputs.release }}
@@ -74,7 +74,7 @@ jobs:
         run: ./gradlew publishPlugin
 
       - name: Create GitHub release
-        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3
+        uses: softprops/action-gh-release@8a0cd651e5b2365bd640854a3fa5dfc70e4875f3 # v3.0.4
         with:
           tag_name: v${{ steps.version.outputs.release }}
           name: ${{ steps.version.outputs.release }}
@@ -88,7 +88,7 @@ jobs:
         run: sed -i "s/^version = \".*\"$/version = \"$NEXT\"/" build.gradle.kts
 
       - name: Commit and push next snapshot version
-        uses: stefanzweifel/git-auto-commit-action@d0b01107b5db882071f96de5dd4b54961ea93f4c # v7
+        uses: stefanzweifel/git-auto-commit-action@d0b01107b5db882071f96de5dd4b54961ea93f4c # v7.2.1
         with:
           commit_message: Bump to ${{ steps.next.outputs.patch }}-SNAPSHOT
           branch: main
