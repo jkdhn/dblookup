@@ -6,5 +6,6 @@
     ":automergePatch",
     ":disableDependencyDashboard",
     ":maintainLockFilesDisabled"
-  ]
+  ],
+  "minimumReleaseAge": "3 days"
 }
