@@ -4,5 +4,13 @@
     "config:best-practices",
     ":disableDependencyDashboard",
     ":maintainLockFilesDisabled"
+  ],
+  "packageRules": [
+    {
+      "description": "Automerge patch updates",
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "branch"
+    }
   ]
 }
